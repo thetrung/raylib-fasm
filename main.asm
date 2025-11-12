@@ -1,5 +1,6 @@
 
 format ELF64
+section '.note.GNU-stack'
 section '.data' writeable
 ; misc stuffs
 color_red:   dd 0xFF0000FF
