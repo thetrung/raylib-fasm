@@ -1,6 +1,6 @@
 
-SRC = main.asm
-OBJ = main.o
+SRC = game.asm
+OBJ = game.o
 BIN = game
 
 # Raylib dynamic linking flags
