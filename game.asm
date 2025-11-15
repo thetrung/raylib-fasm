@@ -1,4 +1,3 @@
-
 format ELF64
 section '.note.GNU-stack'
 section '.data' writeable
@@ -54,6 +53,20 @@ dd 1.0
 
 section '.text' executable
 public _start
+public loop_frame
+public got_border
+public cmp_rect_zero
+public cmp_rect_border
+public orps_xmm1_xmm2
+public cvtdq2ps_xmm1_xmm2
+public new_position
+public convert_xmm1
+public vector_result
+public neg_position_xmm3
+public mul_xmm4_xmm2
+public updated_position
+public updated_vector
+
 extrn _exit
 extrn printf
 extrn InitWindow
@@ -77,11 +90,11 @@ _start:
   mov rsi, 600 
   mov rdx, title
   call InitWindow
-    
-_loop_frame:
+
+loop_frame:
   call WindowShouldClose
   test rax, rax
-  jnz .over
+  jnz over
   call BeginDrawing
 
   mov rdi, [color_black]
@@ -98,23 +111,79 @@ _loop_frame:
   movaps   xmm0,   [border]; SIMD: move 4,8,16 aligned-pack-single float -> MMX register.
   cvtdq2ps xmm0,    xmm0   ; SIMD: Convert 4,8,16 packed doubleword integers -> single-precision floating-point values.
   movaps  [border], xmm0
-
-  ;; next position
-  call GetFrameTime
+got_border:
+  ;; next position : xmm0(new-position) = position + velocity * delta-time
+  call GetFrameTime 
   shufps xmm0, xmm0, 0    ; SIMD: select a single-precision floating-point value of an input quadruplet & move -> dest.
   mulps  xmm0, [velocity] ; SIMD: multiply & move to dest.
   addps  xmm0, [position] ; SIMD: add.
+new_position:
+  ;; check collision by comparing new position with [zero] & [border]
+  ;; => store results in xmm1 & xmm2 :
+  ;;
+  ;; xmm1 = new-position < 0 ? 
+  ;;
+  movaps  xmm1, xmm0       ; SIMD: move new position from xmm0 -> xmm1
+  cmpltps xmm1, [zero]    ; SIMD: cmp less-than : Rect < Zero ? 
+                          ; xmm1 = ? 0xFFFFFFFF : 0x00000000
+                          ;;
+cmp_rect_zero:
+  movaps   xmm2, xmm0       ; SIMD: move xmm0 -> xmm2
+  addps    xmm2, [size]      ; SIMD: xmm2 = position + box-size 
+  cmpnltps xmm2, [border] ; SIMD: cmp not-lan : Rect > screen border ? 
+                          ; xmm2 = ? 0xFFFFFFFF : 0x00000000
+cmp_rect_border:
 
-  ;; draw 
+  orps     xmm1, xmm2        ; Get all bits (0,0,0,0) of screen boundary-check  
+orps_xmm1_xmm2:
+
+  cvtdq2ps xmm1, xmm1        ; convert it into pack of int32 
+cvtdq2ps_xmm1_xmm2:
+
+  mulps    xmm1, [minus_one] ; invert pack -> negative pack 
+
+convert_xmm1:
+  movaps   xmm2, [one]      ; xmm2 = pack of 4[1.0]
+  subps    xmm2, xmm1       ; xmm2 = 4[1.0] - xmm1 
+                            ; => we got sides that didn't collide (x1=0,y1=1,x2=1,y2=1) 
+vector_result:            
+  
+  ;; update position 
+  movaps xmm3, [position] ; xmm3 = moving amount 
+  mulps  xmm3, xmm1       ; xmm3 *= xmm1 (as negative bits) 
+                          ; (move toward sides - that didn't touch screen yet)
+neg_position_xmm3:
+
+  movaps xmm4, xmm0       ; xmm4 = new moving amount 
+  mulps  xmm4, xmm2       ; xmm4 *= xmm2 (all inverted movable sides) 
+mul_xmm4_xmm2:
+
+  addps  xmm3, xmm4       ; xmm3 += xmm4
+  movaps [position], xmm3 ; 
+updated_position:
+
+;; update velocity
+  subps xmm2, xmm1
+  movaps xmm3, [velocity]
+  mulps xmm2, xmm3 
+  movaps [velocity], xmm2
+updated_vector:
+  ;; render Rect #1
   movq xmm0, [position]   ; SIMD: move a quadword between MMX register.
   movq xmm1, [size]
   mov rdi,   [color_red]
   call DrawRectangleV
 
+  ;; render Rect #2
+  movq xmm0, [position + 8]
+  movq xmm1, [size + 8]
+  mov rdi, [color_blue]
+  call DrawRectangleV
+
   call EndDrawing
-  jmp _loop_frame
+  jmp loop_frame
     
-.over:
+over:
   call CloseWindow
   xor rdi,rdi
   call _exit
