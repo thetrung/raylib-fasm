@@ -15,6 +15,21 @@ msg_flag:    db 'Flag START',0,0
 ;
 ; SIMD DATA  
 align 8
+inverted_vector : 
+dd 0.0 
+dd 0.0 
+dd 0.0 
+dd 0.0 
+boundary_check :
+dd 0.0 
+dd 0.0 
+dd 0.0 
+dd 0.0 
+next_position : 
+dd 0.0 
+dd 0.0 
+dd 0.0 
+dd 0.0 
 position :
 dd 100.0
 dd 100.0
@@ -55,17 +70,21 @@ section '.text' executable
 public _start
 public loop_frame
 public got_border
+public compute_next_position
+; Check Screen Bound 
 public cmp_rect_zero
 public cmp_rect_border
 public orps_xmm1_xmm2
 public converted_bitmasks_to_float32
 public mul_xmm1_minus_one
-public new_position
 public vector_result
-public neg_position_xmm3
-public mul_xmm4_xmm2
+;; Update position + vector
 public updated_position
 public updated_vector
+;; variables
+public boundary_check
+public inverted_vector
+public next_position
 
 extrn _exit
 extrn printf
@@ -113,12 +132,13 @@ loop_frame:
   movaps  [border], xmm0
 got_border:
 
-  ;; next position :      ; p' = p + v * dt
+  ;; next position :
   call GetFrameTime 
   shufps xmm0, xmm0, 0    ; SIMD: select a single-precision floating-point value of an input quadruplet & move -> dest.
   mulps  xmm0, [velocity] ; SIMD: multiply & move to dest.
-  addps  xmm0, [position] ; SIMD: add.
-new_position:
+  addps  xmm0, [position] ; SIMD: p' = p + v * dt 
+  movaps [next_position], xmm0 ; our new middle-reg for clarity 
+compute_next_position:
   ;; check collision by comparing new position with [zero] & [border]
   ;; => store results in xmm1 & xmm2 :
   ;;
@@ -141,33 +161,54 @@ orps_xmm1_xmm2:
   cvtdq2ps xmm1, xmm1        ; convert bitmasks in xmm1 -> float32 again.
 converted_bitmasks_to_float32:
 
-  mulps    xmm1, [minus_one] ; invert pack -> negative pack 
+  mulps    xmm1, [minus_one]      ; invert pack -> negative pack
+  movaps [inverted_vector], xmm1  
 mul_xmm1_minus_one:
 
-movaps   xmm2, [one]      ; xmm2 = [1.0, 1.0, 1.0, 1.0]
-subps    xmm2, xmm1       ; xmm2 -= xmm1
+movaps   xmm2, [one]          ; xmm2 = [1.0, 1.0, 1.0, 1.0]
+subps    xmm2, xmm1           ; xmm2 = [one] - [inverted_vector]
+movaps  [boundary_check], xmm2; [boundary_check] = xmm2
 ; => we got sides that didn't collide (x1=0,y1=1,x2=1,y2=1) 
 vector_result:
   
-  ;; update position 
-  movaps xmm3, [position] ; xmm3 = moving amount 
-  mulps  xmm3, xmm1       ; xmm3 *= xmm1 (as negative bits) 
-                          ; (move toward sides - that didn't touch screen yet)
-neg_position_xmm3:
-
-  movaps xmm4, xmm0       ; xmm4 = new moving amount 
-  mulps  xmm4, xmm2       ; xmm4 *= xmm2 (all inverted movable sides) 
-mul_xmm4_xmm2:
-
-  addps  xmm3, xmm4       ; xmm3 += xmm4
-  movaps [position], xmm3 ; 
+  ;; Update position :
+  ;; 
+  ;; * This take use of SSE/SIMD + bitmask-trick to avoid jumping 
+  ;; to each conditional check, instead, it combined boundary_check
+  ;; conditions -> to offset new poistion each x/y side depends on 
+  ;; if the Rectangle collided with or not ?
+  ;; 
+  ;; Box -> collided w/ bounds -> ignore the new x:y position completely 
+  ;; whenever ( Box < 0 || > screen ) then invert velocity by multiplying 
+  ;; with [minus_one] vector.
+  ;; 
+  ;; What tricky here is how author use bitmask-trick to do so, instead of
+  ;; any conditional jump : so [1,1,0,0] * [120,120,0,0] -> new [120,120..]
+  ;; while [0,0,0,0] * [120,120..] -> ignore new position & preserved old one :
+  ;; [position] = [1,1...] * [120,120..] + [0,0..] * [100,100...] 
+  ;;            = [120,120...] => which is the accepted [new_position].
+  ;;
+  ;; This is why we need both [boundary_check] && [inverted_vector] :
+  ;; - they always offset each other as the same to conditions.
+  ;; - [boundary_check] allow [new_position] value 
+  ;; - [inverted_vector] allow old [position] value 
+  ;; - if one is allowed, the other is totally ingorned.
+  ;; => no need for conditional jump, great for SIMD effeciency.
+  ;;
+  movaps xmm4, [next_position]
+  mulps  xmm4, [boundary_check] ; [next_position] *= [boundary_check]                
+  movaps xmm3, [position]      
+  mulps  xmm3, [inverted_vector]; [position] *= [inverted_vector]
+  addps  xmm3, xmm4             ; it offset new/old position by boundary-check :
+  movaps [position], xmm3       ; p'' = [next_position] + [position]
 updated_position:
 
-;; update velocity
-  subps xmm2, xmm1
+;; update velocity : 
+;; because computation always need to be done with register.
+  subps  xmm2, [inverted_vector] ; x2 = [boundary_check] - [inverted_vector]
   movaps xmm3, [velocity]
-  mulps xmm2, xmm3 
-  movaps [velocity], xmm2
+  mulps  xmm2, xmm3
+  movaps [velocity], xmm2        ; [next_velocity] = x2 * [velocity]
 updated_vector:
 
   ;; render Rect #1
