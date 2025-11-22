@@ -7,6 +7,8 @@ color_blue:  dd 0xFF00FF00
 color_black: dd 0xFF181818
 title:       db 'Raylib SIMD Demo',0,0
 msg_flag:    db 'Flag START',0,0
+msg_buf :    rb 32
+msg_pos :    db "position: %f:%f",0,0
 ; 
 ; SEGMENTFAULT :: 
 ; add 0 after the last string field then align 8 
@@ -88,6 +90,7 @@ public next_position
 
 extrn _exit
 extrn printf
+extrn sprintf
 extrn InitWindow
 extrn SetTargetFPS
 extrn WindowShouldClose
@@ -210,6 +213,22 @@ updated_position:
   mulps  xmm2, xmm3
   movaps [velocity], xmm2        ; [next_velocity] = x2 * [velocity]
 updated_vector:
+
+  
+  ;; Format Text 
+  mov edi, msg_buf
+  mov esi, msg_pos
+  shufps xmm0, [position], 0
+  shufps xmm1, [position], 1
+  call sprintf
+
+  ;; Draw Text
+  mov rdi, msg_buf
+  mov rsi, 100          ; posX
+  mov rdx, 100          ; posY
+  mov rcx, 20           ; font-size
+  mov r8, [color_white] ; color
+  call DrawText
 
   ;; render Rect #1
   movq xmm0, [position]   ; SIMD: move a quadword between MMX register.
