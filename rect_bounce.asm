@@ -2,13 +2,14 @@ format ELF64
 section '.note.GNU-stack'
 section '.data' writeable
 ; misc stuffs
-color_red:   dd 0xFF0000FF
-color_blue:  dd 0xFF00FF00
-color_black: dd 0xFF181818
-title:       db 'Raylib SIMD Demo',0,0
-msg_flag:    db 'Flag START',0,0
-msg_buf :    rb 32
-msg_pos :    db "position: %f:%f",0,0
+color_red:    dd 0xFF0000FF
+color_blue:   dd 0xFF00FF00
+color_white:  dd 0xFFFFFFFF
+color_black:  dd 0xFF181818
+title:        db 'Raylib SIMD Demo',0,0
+msg_flag:     db 'Flag START',0,0
+msg_buffer:   rb 128
+msg_position: db 'position: %f  %f',0,0 ; %f will use double while %.2f will use float.
 ; 
 ; SEGMENTFAULT :: 
 ; add 0 after the last string field then align 8 
@@ -87,7 +88,6 @@ public updated_vector
 public boundary_check
 public inverted_vector
 public next_position
-
 extrn _exit
 extrn printf
 extrn sprintf
@@ -99,6 +99,7 @@ extrn ClearBackground
 extrn GetScreenWidth
 extrn GetScreenHeight
 extrn GetFrameTime
+extrn DrawText
 extrn DrawRectangle
 extrn DrawRectangleV
 extrn EndDrawing
@@ -137,7 +138,7 @@ got_border:
 
   ;; next position :
   call GetFrameTime 
-  shufps xmm0, xmm0, 0    ; SIMD: select a single-precision floating-point value of an input quadruplet & move -> dest.
+  shufps xmm0, xmm0, 0x00 ; SIMD: 0x00, 0x55, 0xAA, 0xFF => (1..), (2..), (3..), (4..)
   mulps  xmm0, [velocity] ; SIMD: multiply & move to dest.
   addps  xmm0, [position] ; SIMD: p' = p + v * dt 
   movaps [next_position], xmm0 ; our new middle-reg for clarity 
@@ -215,15 +216,20 @@ updated_position:
 updated_vector:
 
   
-  ;; Format Text 
-  mov edi, msg_buf
-  mov esi, msg_pos
-  shufps xmm0, [position], 0
-  shufps xmm1, [position], 1
+  ;; Format Text  
+  movss xmm0, [position]      ; 1st arg : posX
+  movss xmm1, [position + 4]  ; 2nd arg : posY
+  cvtss2sd xmm0, xmm0         ; convert float -> double 
+  cvtss2sd xmm1, xmm1
+
+  mov rdi, msg_buffer   ; outbuf
+  mov rsi, msg_position ; const char*
+  ; xmm0 = 1st arg 
+  ; xmm1 = 2nd arg 
   call sprintf
 
   ;; Draw Text
-  mov rdi, msg_buf
+  mov rdi, msg_buffer
   mov rsi, 100          ; posX
   mov rdx, 100          ; posY
   mov rcx, 20           ; font-size
