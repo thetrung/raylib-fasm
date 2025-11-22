@@ -1,17 +1,14 @@
-
-SRC = game.asm
-OBJ = game.o
-BIN = game
-
 # Raylib dynamic linking flags
 RAYLIB_LIBS := -dynamic-linker /lib64/ld-linux-x86-64.so.2 -L./raylib/ -lc -lraylib -lm
 
-$(BIN): $(SRC)
-	fasm $(SRC) $(OBJ)
-	ld -o $(BIN) $(OBJ) $(RAYLIB_LIBS)
+rect_bounce: rect_bounce.asm
+	fasm rect_bounce.asm rect_bounce.o
+	ld -o rect_bounce rect_bounce.o $(RAYLIB_LIBS)
 
-run: $(BIN)
-	./$(BIN)
+get_keycode: get_keycode.asm
+	fasm get_keycode.asm get_keycode.o
+	ld -o get_keycode get_keycode.o $(RAYLIB_LIBS)
 
 clean:
-	rm -f $(OBJ) $(BIN)
+	rm -f rect_bounce rect_bounce.o \
+				get_keycode get_keycode.o

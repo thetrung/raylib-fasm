@@ -1,9 +1,19 @@
-# Raylib on FASM 
+# Raylib on FASM
+A playground exclusively on raylib/fasm.
+
+#### rect_bounce 
 A more detailed analysis into how SIMD + Bitmask work for non-jumping condition trick : boundary-check on all screen sides + offset new (or preserve old) position by combined bitmasks result.
+
+#### get_keycode
+Which initially was drag-drop demo but then I realize Wayland doesn't support drag-drop like X11 for raylib. So eventually turn this into get_keycode demo to understand flow & arrange code block more effectively. Also :
+
+How to skip frame properly in Raylib ?
+
+Because swap-buffer will be called whenever you update your both frames in buffer or not.. Which took me 5Hrs to debug what was wrong then realized it was the buffer showing old frame, LMAO xD.
 
 ### 1. Compile
 
-    make && ./game
+    make build && ./rect_bounce
 
 cleanup :
 
