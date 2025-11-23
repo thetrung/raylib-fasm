@@ -11,9 +11,17 @@ How to skip frame properly in Raylib ?
 
 Because swap-buffer will be called whenever you update your both frames in buffer or not.. Which took me 5Hrs to debug what was wrong then realized it was the buffer showing old frame, LMAO xD.
 
+#### sprintf_float
+One problem I realize while dealing with floating-point number on Raylib is: how we properly move, convert, display, format it properly in FASM. And turnout, it should be just as simple as `cvtss2sd xmm0, [simd_data]` then call `sprintf` with your format string as usual. This example is to demostrate that without crashing.
+
+`movss` to move a single scalar from SSE->SSE registers.
+`movaps` to move aligned packed (of 4 in SSE) single precision values at once.
+`movq/movdq` for normal register <- SSE register depends on size.
+`shufps` if you want mass-move data from one XMM to another..
+
 ### 1. Compile
 
-    make build && ./rect_bounce
+    make
 
 cleanup :
 

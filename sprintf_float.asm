@@ -2,11 +2,13 @@ format ELF64
 section '.note.GNU-stack'
 section '.data' writable
 ;; DATA 
-title: db "Get KeyCode in Raylib/Fasm", 0xA, 0x0
+title: db "convert & sprintf float in Raylib/Fasm", 0xA, 0x0
 msg_none: db "Empty here.", 0xA, 0
 msg_buffer: rb 64
-msg_fmt: db "%.2f %.2f %.2f %.2f",0,0
-msg_pressed: db "Pressed keycode %d (skip %d frames)", 0xA,0
+msg_fmt: db "x = %.2f",0xA,\ 
+            "y = %.2f",0xA,\
+            "z = %.2f",0xA,\
+            "w = %.2f",0xA,0x0
 ;; COLOR
 color_black: dd 0xFF181818
 color_white: dd 0xFFFFFFFF
@@ -58,7 +60,7 @@ macro draw_text content {
 
 _start:
   mov rdi, 800
-  mov rsi, 600
+  mov rsi, 400
   mov rdx, title
   call InitWindow
 
@@ -109,9 +111,6 @@ _enable_skip:
   cvtss2sd xmm1, [simd_data+4]
   cvtss2sd xmm2, [simd_data+8]
   cvtss2sd xmm3, [simd_data+12]
-  ;mov esi, msg_pressed  ;const char*
-  ;mov edx, [key_pressed];arg0: keycode
-  ;mov ecx, [frame_skip] ;arg1: frame_skip
   call sprintf
 
 _draw_msg:
