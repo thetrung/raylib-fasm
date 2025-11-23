@@ -7,9 +7,11 @@ color_blue:   dd 0xFF00FF00
 color_white:  dd 0xFFFFFFFF
 color_black:  dd 0xFF181818
 title:        db 'Raylib SIMD Demo',0,0
-msg_flag:     db 'Flag START',0,0
+msg_flag:     db "Flag START",0xA,0         ; 0xA => newline 
 msg_buffer:   rb 128
-msg_position: db 'position: %f  %f',0,0 ; %f will use double while %.2f will use float.
+msg_position: db "position:",0xA,\
+                 "x1 = %.2f",0xA,\
+                 "y1 = %.2f",0xA,0 ; %f will use double while %.2f will use float.
 ; 
 ; SEGMENTFAULT :: 
 ; add 0 after the last string field then align 8 
@@ -217,15 +219,10 @@ updated_vector:
 
   
   ;; Format Text  
-  movss xmm0, [position]      ; 1st arg : posX
-  movss xmm1, [position + 4]  ; 2nd arg : posY
-  cvtss2sd xmm0, xmm0         ; convert float -> double 
-  cvtss2sd xmm1, xmm1
-
   mov rdi, msg_buffer   ; outbuf
   mov rsi, msg_position ; const char*
-  ; xmm0 = 1st arg 
-  ; xmm1 = 2nd arg 
+  cvtss2sd xmm0, [position]      ; 1st arg : posX
+  cvtss2sd xmm1, [position + 4]  ; 2nd arg : posY
   call sprintf
 
   ;; Draw Text

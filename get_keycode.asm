@@ -5,7 +5,6 @@ section '.data' writable
 title: db "Get KeyCode in Raylib/Fasm", 0xA, 0x0
 msg_none: db "Empty here.", 0xA, 0
 msg_buffer: rb 64
-msg_fmt: db "%.2f %.2f %.2f %.2f",0,0
 msg_pressed: db "Pressed keycode %d (skip %d frames)", 0xA,0
 ;; COLOR
 color_black: dd 0xFF181818
@@ -30,7 +29,7 @@ section '.text' executable
 public _start
 extrn _exit
 ;; DEBUG
-;;public _skip
+
 ;; LIB64
 extrn sprintf
 ;;WINDOW
@@ -104,14 +103,9 @@ _enable_skip:
 
   _format_key:          ;format int -> msg 
   mov edi, msg_buffer   ;outbuf
-  mov esi, msg_fmt
-  cvtss2sd xmm0, [simd_data]
-  cvtss2sd xmm1, [simd_data+4]
-  cvtss2sd xmm2, [simd_data+8]
-  cvtss2sd xmm3, [simd_data+12]
-  ;mov esi, msg_pressed  ;const char*
-  ;mov edx, [key_pressed];arg0: keycode
-  ;mov ecx, [frame_skip] ;arg1: frame_skip
+  mov esi, msg_pressed  ;const char*
+  mov edx, [key_pressed];arg0: keycode
+  mov ecx, [frame_skip] ;arg1: frame_skip
   call sprintf
 
 _draw_msg:
@@ -119,7 +113,7 @@ _draw_msg:
 
 _end_render:
   call EndDrawing
-  jmp _main_loop
+jmp _main_loop
 
 _end:
   call CloseWindow
