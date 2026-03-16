@@ -1,23 +1,23 @@
 format ELF64
+include 'linux64a.inc'
 section '.note.GNU-stack'
 section '.data' writable
 ;; DATA 
-title: db "convert & sprintf float in Raylib/Fasm", 0xA, 0x0
-msg_none: db "Empty here.", 0xA, 0
-msg_buffer: rb 64
-msg_fmt: db "x = %.2f",0xA,\ 
-            "y = %.2f",0xA,\
-            "z = %.2f",0xA,\
-            "w = %.2f",0xA,0x0
+title      db "convert & sprintf float in Raylib/Fasm", 0xA, 0x0
+msg_none   db "Empty here.", 0xA, 0
+msg_buffer rb 64
+msg_fmt    db "x = %.2f",0xA,\ 
+              "y = %.2f",0xA,\
+              "z = %.2f",0xA,\
+              "w = %.2f",0xA,0x0
 ;; COLOR
-color_black: dd 0xFF181818
-color_white: dd 0xFFFFFFFF
+color_black dd 0xFF181818
+color_white dd 0xFFFFFFFF
 ;; FRAME 
-FRAMERATE equ 120
-frame_skip: dd 0      ; instead of sleep.
+FRAMERATE     equ 120
 SKIP_DURATION equ 60  ; 1 seconds
-;; KEY 
-key_pressed: dd 0
+frame_skip    dd 0      ; instead of sleep.
+key_pressed   dd 0
 
 ;; SIMD
 align 8
@@ -31,9 +31,6 @@ section '.text' executable
 ;; ENTRY 
 public _start
 extrn _exit
-;; DEBUG
-;;public _skip
-;; LIB64
 extrn sprintf
 ;;WINDOW
 extrn InitWindow
@@ -46,27 +43,14 @@ extrn DrawText
 extrn EndDrawing
 ;; INPUT
 extrn GetKeyPressed
-
+;; MACRO 
 macro draw_text content {
-  ;; Text 
-  ;xor rax, rax            ;clear return reg 
-  mov rdi, content        ;*text
-  mov rsi, 100            ;posX
-  mov rdx, 50             ;posY
-  mov rcx, 20             ;font-size
-  mov r8,  [color_white]  ;color
-  call DrawText
+  invoke DrawText, content, 100, 50, 20, qword [color_white]
 }
-
+;; ENTRY
 _start:
-  mov rdi, 800
-  mov rsi, 400
-  mov rdx, title
-  call InitWindow
-
-;; FPS 
-  mov rdi, FRAMERATE
-  call SetTargetFPS
+  invoke InitWindow, 800, 400, title
+  invoke SetTargetFPS, FRAMERATE
 
 _main_loop:
   call WindowShouldClose
@@ -77,8 +61,7 @@ _render:
   call BeginDrawing
 
 ;;Background 
-  mov rdi, [color_black]
-  call ClearBackground
+  invoke ClearBackground, qword [color_black]
 
 ;;Frame Skip :          ; stay inside Begin/EndDrawing() to work.
   mov eax, [frame_skip] ; eax = 32bit, dd = 4-bytes, db = 1-byte.
@@ -105,13 +88,11 @@ _enable_skip:
   mov [frame_skip], eax
 
   _format_key:          ;format int -> msg 
-  mov edi, msg_buffer   ;outbuf
-  mov esi, msg_fmt
   cvtss2sd xmm0, [simd_data]
   cvtss2sd xmm1, [simd_data+4]
   cvtss2sd xmm2, [simd_data+8]
   cvtss2sd xmm3, [simd_data+12]
-  call sprintf
+  invoke sprintf, msg_buffer, msg_fmt
 
 _draw_msg:
   draw_text msg_buffer

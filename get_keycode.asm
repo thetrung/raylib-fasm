@@ -1,20 +1,25 @@
 format ELF64
+include 'linux64a.inc'
 section '.note.GNU-stack'
 section '.data' writable
+
 ;; DATA 
-title: db "Get KeyCode in Raylib/Fasm", 0xA, 0x0
-msg_none: db "Empty here.", 0xA, 0
-msg_buffer: rb 64
-msg_pressed: db "Pressed keycode %d (skip %d frames)", 0xA,0
+title       db "Get KeyCode in Raylib/Fasm", 0xA, 0x0
+msg_none    db "Empty here.", 0xA, 0
+msg_buffer  rb 64
+msg_pressed db "Pressed keycode %d (skip %d frames)", 0xA,0
+
 ;; COLOR
-color_black: dd 0xFF181818
-color_white: dd 0xFFFFFFFF
+color_black dd 0xFF181818
+color_white dd 0xFFFFFFFF
+
 ;; FRAME 
-FRAMERATE equ 120
-frame_skip: dd 0      ; instead of sleep.
+FRAMERATE     equ 120
+frame_skip     dd  0      ; instead of sleep.
 SKIP_DURATION equ 60  ; 1 seconds
+
 ;; KEY 
-key_pressed: dd 0
+key_pressed    dd 0
 
 ;; SIMD
 align 8
@@ -46,24 +51,14 @@ extrn GetKeyPressed
 
 macro draw_text content {
   ;; Text 
-  ;xor rax, rax            ;clear return reg 
-  mov rdi, content        ;*text
-  mov rsi, 100            ;posX
-  mov rdx, 50             ;posY
-  mov rcx, 20             ;font-size
-  mov r8,  [color_white]  ;color
-  call DrawText
+  xor rax, rax            ;clear return reg 
+  ; DrawText(content, posX, posY, font-size, color)
+  invoke DrawText, content, 100, 50, 20, qword [color_white]
 }
 
 _start:
-  mov rdi, 800
-  mov rsi, 600
-  mov rdx, title
-  call InitWindow
-
-;; FPS 
-  mov rdi, FRAMERATE
-  call SetTargetFPS
+  invoke InitWindow, 800, 600, title
+  invoke SetTargetFPS, FRAMERATE ; FPS 
 
 _main_loop:
   call WindowShouldClose
@@ -72,10 +67,7 @@ _main_loop:
 
 _render:
   call BeginDrawing
-
-;;Background 
-  mov rdi, [color_black]
-  call ClearBackground
+  invoke ClearBackground, qword [color_black]
 
 ;;Frame Skip :          ; stay inside Begin/EndDrawing() to work.
   mov eax, [frame_skip] ; eax = 32bit, dd = 4-bytes, db = 1-byte.
@@ -102,11 +94,7 @@ _enable_skip:
   mov [frame_skip], eax
 
   _format_key:          ;format int -> msg 
-  mov edi, msg_buffer   ;outbuf
-  mov esi, msg_pressed  ;const char*
-  mov edx, [key_pressed];arg0: keycode
-  mov ecx, [frame_skip] ;arg1: frame_skip
-  call sprintf
+  invoke sprintf, msg_buffer, msg_pressed, qword [key_pressed], qword [frame_skip]
 
 _draw_msg:
   draw_text msg_buffer
