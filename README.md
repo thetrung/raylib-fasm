@@ -2,7 +2,7 @@
 A playground exclusively on raylib/fasm.
 
 ### Note 
-16.03.2026 - when I come back to FASM after a long rest (like 3 months), I actually have to relearn everything I have known about this Assembler & specially about x86-64 Register/Instruction usage to improve further through its native macros system (invoke/simd) to understand clearly how everything actually work. Which made my new code in `playground-fasm` much better to read/write with new macros even on minimal `libX11/GL`.   
+16.03.2026 - when I come back to FASM after a long rest (like 3 months), I actually have to relearn everything I have known about this Assembler & specially about x86-64 Register/Instruction usage to improve further through its native macros system (invoke/simd) to understand clearly how everything actually work. Which made my new code in [`playground-fasm`](https://github.com/thetrung/playground-fasm) much better to read/write with new macros even on minimal `libX11/GL`.   
 
 And so, coming back to this early codebase to refactor a little bit more, I realized how bad it is to misunderstand me (by over-complicated things) when I first-come to write FASM. Mostly about how each register type require its own instruction/correct size to work with, while mixing with how to invoke c-function on Linux in a good way that never cause `SEGFAULT` by correct stack alignment. Which also explain how struct alignment actually work to measure its size when doing malloc/free.
 
