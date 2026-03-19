@@ -75,6 +75,11 @@ cleanup :
       x = display in hex
       $rax+40 = address expression
 
+- show in form of int/long :
+
+      p *(int*)($rax+40)
+      p *(long*)($rax+40)
+
 ### 3. Dependencies 
 More details about used libraries in the `Makefile` but only linux lib64 + Raylib.
 
