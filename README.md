@@ -60,7 +60,20 @@ cleanup :
 
 - get value inside registers or symbol address :
 
-      p $xmm0.v4_float ;=> show value in pack of float 
+      p $xmm0.v4_float ;=> show value in pack of float
+
+- get value of memory at `[rax+40]` :
+
+      x/bx $rax+40   # 1 byte
+      x/hx $rax+40   # 2 bytes
+      x/wx $rax+40   # 4 bytes
+      x/gx $rax+40   # 8 bytes (most common for x86-64)
+
+      Breakdown:
+      x = examine memory
+      /g = giant word (8 bytes)
+      x = display in hex
+      $rax+40 = address expression
 
 ### 3. Dependencies 
 More details about used libraries in the `Makefile` but only linux lib64 + Raylib.
